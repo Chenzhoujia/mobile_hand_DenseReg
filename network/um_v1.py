@@ -1,9 +1,11 @@
+#coding=utf-8
 from __future__ import print_function, absolute_import, division
 
 
 import tensorflow as tf
-from network.slim import scopes, ops
-
+import numpy as np
+from network.slim import scopes, ops, losses, variables
+CAM_num = 0
 FLAGS = tf.app.flags.FLAGS
 
 _batch_norm_params={'decay':0.99,
@@ -35,7 +37,8 @@ def standard_group_conv(num_groups, net, num_outputs, kernel_size=3, scope='sgc'
 
 def standard_group_conv_CAM(num_groups, net, num_outputs, kernel_size=3, scope='sgc'):
     n, h, w, c = net.shape
-
+    global CAM_num
+    CAM_num = CAM_num+1
     #with tf.variable_scope(scope):
     with scopes.arg_scope([ops.conv2d],
                           stddev=0.01,
@@ -45,17 +48,22 @@ def standard_group_conv_CAM(num_groups, net, num_outputs, kernel_size=3, scope='
                           stride=1,
                           padding='SAME'):
         net_splits = tf.split(net, [int(c // num_groups)] * num_groups, axis=-1)
-        # net_splits to
-        dense_message_aggregation = learnable_Adj
-
-        source_data_tmp = tf.transpose(cur_node_states)  # [D, B*G]
-        source_data_tmp = tf.reshape(source_data_tmp, shape=(-1, node_num))  # [D*B, G]
-        target = tf.matmul(source_data_tmp, dense_message_aggregation)  # [D*B, G]
-        target = tf.reshape(target, shape=(128, -1))  # [D, B*G]
-        aggregated_messages = tf.transpose(target)  # [B*G, D]
-
         net = [ops.conv2d(net_split, num_outputs // num_groups, kernel_size) for net_split in net_splits]
-        net = tf.concat(net, axis=-1)  # (n, h, w, num_outputs)
+
+        weights_initializer = tf.truncated_normal_initializer(stddev=0.01)
+        l2_regularizer = losses.l2_regularizer(0.0005)
+        learnable_Adj_weights = variables.variable('learnable_adj_weights_' + str(CAM_num),
+                                                   shape=[num_groups, num_groups],
+                                                   initializer=weights_initializer,
+                                                   regularizer=l2_regularizer,
+                                                   trainable=True,
+                                                   restore=True)
+        net = [tf.expand_dims(tf.reshape(net_split, shape=[-1]), -1) for net_split in net]
+        net = tf.concat(net, axis=-1) # [D*B, G]
+        net = tf.matmul(net, learnable_Adj_weights)  # [D*B, G]
+        net_splits = tf.split(net, num_groups, axis=-1)
+        net = [tf.reshape(net_split, shape=[n, h, w, num_outputs// num_groups]) for net_split in net_splits]
+        net = tf.concat(net, axis=-1)
 
     return net
 
@@ -151,6 +159,8 @@ def _hourglass(ins, n, group):
     return upper1+upper2
 
 def detect_net(dm_inputs, cfgs, coms, num_jnt, is_training=True, scope=''):
+    global CAM_num
+    CAM_num = 0
     end_points = {}
     end_points['hm_outs'] = []
     end_points['hm3_outs'] = []
@@ -165,14 +175,14 @@ def detect_net(dm_inputs, cfgs, coms, num_jnt, is_training=True, scope=''):
             # initial image processing (from 512*512 -> 128*128)
             with tf.variable_scope('hg_imgproc'):
                 # 512*512 -> 256*256
-                conv_1 = ops.conv2d(dm_inputs, 32, [7,7], stride=2, padding='SAME',
+                conv_1 = ops.conv2d(dm_inputs, num_jnt*2, [7,7], stride=2, padding='SAME',
                                    batch_norm_params=_batch_norm_params, weight_decay=0.0005)
-                conv_2 = _residual(conv_1, 64)
+                conv_2 = _residual_group(conv_1, num_jnt*4)
 
                 # 256*256 -> 128*128
                 pool_1 = ops.max_pool(conv_2, kernel_size=2, stride=2, padding='SAME')
-                conv_3 = _residual(pool_1) 
-                conv_4 = _residual(conv_3, FLAGS.num_fea) 
+                conv_3 = _residual_group(pool_1)
+                conv_4 = _residual_group(conv_3, FLAGS.num_fea)
                 hg_ins = conv_4
 
                 global MID_FEA_MAP
@@ -206,7 +216,7 @@ def detect_net(dm_inputs, cfgs, coms, num_jnt, is_training=True, scope=''):
             for i in range(FLAGS.num_stack):
                 hg_outs = _hourglass(hg_ins, n=num_resize, group = num_jnt)
 
-                ll = _residual(hg_outs)
+                ll = _residual_group(hg_outs)
                 ll = ops.conv2d(ll, FLAGS.num_fea, [1,1], stride=1, padding='SAME',
                                 activation=tf.nn.relu,
                                 batch_norm_params=_batch_norm_params,
