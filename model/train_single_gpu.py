@@ -116,7 +116,7 @@ def train(model, restore_step=None):
         sess.run(init_op)
         start_step = 0
         # to resume the training
-        if restore_step is not None:# and restore_step>0:
+        if restore_step is not None and restore_step>0:
             checkpoint_path = os.path.join(model.train_dir, 'model.ckpt-%d'%restore_step)
             saver.restore(sess, checkpoint_path)
             start_step = restore_step

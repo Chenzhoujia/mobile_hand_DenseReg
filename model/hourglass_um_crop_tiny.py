@@ -902,8 +902,9 @@ if __name__ == '__main__':
         dataset = data.msra.MsraDataset('training', FLAGS.pid)
         val_dataset = data.msra.MsraDataset('testing', FLAGS.pid)
     # FLAGS.is_train = False
-    # --dataset nyu --batch_size 32 --num_stack 2 --num_fea 128 --debug_level 2 --is_train True
+    # --dataset nyu --batch_size 24 --num_stack 2 --num_fea 128 --debug_level 2 --is_train True
     # --dataset nyu --batch_size 3 --num_stack 2 --num_fea 128 --debug_level 2 --is_train False
+    FLAGS.num_fea = FLAGS.num_fea*dataset.jnt_num
     if FLAGS.is_train:
         run_train(dataset, val_dataset, -1)
     else:

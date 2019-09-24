@@ -15,6 +15,88 @@ _batch_norm_params={'decay':0.99,
 # v0 + dropout on the fully connected layer
 TOWER_NAME = 'um_v1'
 
+
+def standard_group_conv(num_groups, net, num_outputs, kernel_size=3, scope='sgc'):
+    n, h, w, c = net.shape
+
+    #with tf.variable_scope(scope):
+    with scopes.arg_scope([ops.conv2d],
+                          stddev=0.01,
+                          activation=tf.nn.relu,
+                          batch_norm_params=_batch_norm_params,
+                          weight_decay=0.0005,
+                          stride=1,
+                          padding='SAME'):
+        net_splits = tf.split(net, [int(c // num_groups)] * num_groups, axis=-1)
+        net = [ops.conv2d(net_split, num_outputs // num_groups, kernel_size) for net_split in net_splits]
+        net = tf.concat(net, axis=-1)  # (n, h, w, num_outputs)
+
+    return net
+
+def standard_group_conv_CAM(num_groups, net, num_outputs, kernel_size=3, scope='sgc'):
+    n, h, w, c = net.shape
+
+    #with tf.variable_scope(scope):
+    with scopes.arg_scope([ops.conv2d],
+                          stddev=0.01,
+                          activation=tf.nn.relu,
+                          batch_norm_params=_batch_norm_params,
+                          weight_decay=0.0005,
+                          stride=1,
+                          padding='SAME'):
+        net_splits = tf.split(net, [int(c // num_groups)] * num_groups, axis=-1)
+        # net_splits to
+        dense_message_aggregation = learnable_Adj
+
+        source_data_tmp = tf.transpose(cur_node_states)  # [D, B*G]
+        source_data_tmp = tf.reshape(source_data_tmp, shape=(-1, node_num))  # [D*B, G]
+        target = tf.matmul(source_data_tmp, dense_message_aggregation)  # [D*B, G]
+        target = tf.reshape(target, shape=(128, -1))  # [D, B*G]
+        aggregated_messages = tf.transpose(target)  # [B*G, D]
+
+        net = [ops.conv2d(net_split, num_outputs // num_groups, kernel_size) for net_split in net_splits]
+        net = tf.concat(net, axis=-1)  # (n, h, w, num_outputs)
+
+    return net
+
+def _residual_group(ins, num_out=None, group_num = 14):
+    ''' the bottleneck residual module
+    Args:
+        ins: the inputs
+        k: kernel size
+        num_out: number of the output feature maps, default set as the same as input
+    Returns:
+        residual network output
+    '''
+    num_in = ins.shape[-1].value
+    if num_out is None:
+        num_out = num_in
+
+    with scopes.arg_scope([ops.conv2d],
+                         stddev=0.01,
+                         activation=tf.nn.relu,
+                         batch_norm_params=_batch_norm_params,
+                         weight_decay=0.0005,
+                         stride=1,
+                         padding='SAME'):
+        half_num_in = int(num_in//2)
+        #out_1 = ops.conv2d(ins, half_num_in, [1,1])
+        #out_1 = standard_group_conv(group_num, ins, half_num_in, kernel_size=1, scope='sgc_1')
+        out_1 = standard_group_conv_CAM(group_num, ins, half_num_in, kernel_size=1, scope='sgc_1')
+        k = FLAGS.kernel_size
+        #out_1 = ops.conv2d(out_1, half_num_in, [k,k])
+        #out_1 = standard_group_conv(group_num, out_1, half_num_in, kernel_size=k, scope='sgc_2')
+        out_1 = standard_group_conv_CAM(group_num, out_1, half_num_in, kernel_size=k, scope='sgc_2')
+        #out_1 = ops.conv2d(out_1, num_out, [1,1])
+        #out_1 = standard_group_conv(group_num, out_1, num_out, kernel_size=1, scope='sgc_3')
+        out_1 = standard_group_conv_CAM(group_num, out_1, num_out, kernel_size=1, scope='sgc_3')
+
+        if num_out == num_in:
+            out_2 = ins
+        else:
+            out_2 = ops.conv2d(ins, num_out, [1,1])
+        return out_1+out_2
+
 def _residual(ins, num_out=None):
     ''' the bottleneck residual module
     Args:
@@ -48,21 +130,21 @@ def _residual(ins, num_out=None):
         return out_1+out_2
 
 MID_FEA_MAP = None
-def _hourglass(ins, n):
+def _hourglass(ins, n, group):
     ''' hourglass is created recursively, each time the module spatial resolution remains the same
     '''
-    upper1 = _residual(ins)
-    
+    upper1 = _residual_group(ins)
+
     k = FLAGS.kernel_size
     lower1 = ops.max_pool(ins, [k,k], stride=2, padding='SAME')
-    lower1 = _residual(lower1)
+    lower1 = _residual_group(lower1)
 
     if n > 1:
-        lower2 = _hourglass(lower1, n-1)
+        lower2 = _hourglass(lower1, n-1, group)
     else:
         lower2 = lower1
 
-    lower3 = _residual(lower2)
+    lower3 = _residual_group(lower2)
     upper2 = ops.upsampling_nearest(lower3, 2)
     print('[hourglass] n={}, shape={}'.format(n, upper1.shape))
 
@@ -122,7 +204,7 @@ def detect_net(dm_inputs, cfgs, coms, num_jnt, is_training=True, scope=''):
 
             # the hour glass
             for i in range(FLAGS.num_stack):
-                hg_outs = _hourglass(hg_ins, n=num_resize)
+                hg_outs = _hourglass(hg_ins, n=num_resize, group = num_jnt)
 
                 ll = _residual(hg_outs)
                 ll = ops.conv2d(ll, FLAGS.num_fea, [1,1], stride=1, padding='SAME',
