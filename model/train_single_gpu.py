@@ -1,6 +1,5 @@
 from __future__ import print_function, absolute_import, division
 
-import gpu_config
 import tensorflow as tf
 import network.slim as slim
 import numpy as np
@@ -39,10 +38,10 @@ def train(model, restore_step=None):
     model: provide several required interface to train
     '''
     with tf.Graph().as_default():
-        global_step = tf.get_variable(
+        global_step = tf.compat.v1.get_variable(
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
-        lr = tf.train.exponential_decay(model.init_lr,
+        lr = tf.compat.v1.train.exponential_decay(model.init_lr,
                                        global_step,
                                        model.decay_steps,
                                        model.lr_decay_factor,
@@ -51,7 +50,7 @@ def train(model, restore_step=None):
         print('[train] learning rate decays per %d steps with rate=%f'%(
             model.decay_steps,model.lr_decay_factor))
         print('[train] initial learning_rate = %f'%model.init_lr)
-        tf.summary.scalar('learning_rate', lr)
+        tf.compat.v1.summary.scalar('learning_rate', lr)
         opt = model.opt(lr)
         
         batches = model.batch_input(model.train_dataset)
@@ -92,7 +91,7 @@ def train(model, restore_step=None):
             grad, var = grad_and_var[0], grad_and_var[1]
             if grad is not None:
                 tf.summary.histogram(var.op.name, var)
-                tf.summary.histogram(var.op.name+'/gradients', ave_grad)
+                tf.summary.histogram(var.op.name+'\\gradients', ave_grad)
 
         # variable_averages = tf.train.ExponentialMovingAverage(
             # model.moving_average_decay, global_step)
@@ -117,7 +116,7 @@ def train(model, restore_step=None):
         sess.run(init_op)
         start_step = 0
         # to resume the training
-        if restore_step is not None and restore_step>0:
+        if restore_step is not None:# and restore_step>0:
             checkpoint_path = os.path.join(model.train_dir, 'model.ckpt-%d'%restore_step)
             saver.restore(sess, checkpoint_path)
             start_step = restore_step
@@ -152,7 +151,7 @@ def train(model, restore_step=None):
             duration = time.time() - start_time
 
             if step%5 == 0:
-                format_str = '[model/train_multi_gpu] %s: step %d/%d, loss = %.3f, %.3f sec/batch, %.3f sec/sample'
+                format_str = '[model\\train_multi_gpu] %s: step %d/%d, loss = %.3f, %.3f sec/batch, %.3f sec/sample'
                 print(format_str%(datetime.now(), step, model.max_steps, ave_loss, duration, duration/(FLAGS.batch_size*accu_steps)))
                 f.write(format_str%(datetime.now(), step, model.max_steps, ave_loss, duration, duration/(FLAGS.batch_size*accu_steps))+'\n')
                 f.flush()

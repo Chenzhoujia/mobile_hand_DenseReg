@@ -1,6 +1,6 @@
 from __future__ import print_function, absolute_import, division
 
-import gpu_config
+
 import numpy as np
 import tensorflow as tf
 import data.util
@@ -253,7 +253,7 @@ def data_aug(dms, poses, cfgs, coms):
         target_width = tf.to_int32(tf.to_float(tf.shape(dm)[1])*edge_ratio[1])
         # 1 stands for nearest neighour interpolation
         rot_dm = tf.image.resize_images(rot_dm, (target_height, target_width), 1)
-        rot_dm = tf.image.resize_image_with_crop_or_pad(rot_dm, tf.shape(dm)[0], tf.shape(dm)[1])
+        rot_dm = tf.image.resize_with_crop_or_pad(rot_dm, tf.shape(dm)[0], tf.shape(dm)[1])
         rot_pose = tf.multiply(rot_pose, tf.tile([edge_ratio[1],edge_ratio[0],1.0], [jnt_num]))
 
         rot_pose = rot_pose + tf.tile(uv_com, [jnt_num])

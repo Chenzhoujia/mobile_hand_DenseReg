@@ -3,7 +3,7 @@ import collections
 import cv2, numpy as np
 import scipy.stats as st
 
-import gpu_config
+
 import tensorflow as tf
 
 CameraConfig = collections.namedtuple('CameraConfig', 'fx,fy,cx,cy,w,h')

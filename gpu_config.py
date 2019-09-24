@@ -1,6 +1,6 @@
 from __future__ import print_function, division, absolute_import
 import os
-import commands
+import subprocess
 
 # check the job id 
 gpu_lock_path = '/tmp/lock-gpu*/info.txt'

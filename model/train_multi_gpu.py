@@ -3,7 +3,7 @@ WARNING: this file is still under development, is not guaranteed to work.
 '''
 from __future__ import print_function, absolute_import, division
 
-import gpu_config
+
 import tensorflow as tf
 import network.slim as slim
 import numpy as np
@@ -87,7 +87,7 @@ def train(model):
 
                     grads = opt.compute_gradients(loss)
                     tower_grads.append(grads)
-                    print('setup %dth gpu on %d'%(i, gpu_config.gpu_list[i]))
+                    #print('setup %dth gpu on %d'%(i, gpu_config.gpu_list[i]))
 
         grads = _average_gradients(tower_grads)
 
@@ -144,7 +144,7 @@ def train(model):
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
             if step%10 == 0:
-                format_str = '[model/train_multi_gpu] %s: step %d, loss = %.2f, %.3f sec/batch, %.3f sec/sample'
+                format_str = '[model\\train_multi_gpu] %s: step %d, loss = %.2f, %.3f sec/batch, %.3f sec/sample'
                 print(format_str %(datetime.now(), step, loss_value, duration, duration/FLAGS.batch_size))
 
             if step%100 == 0:

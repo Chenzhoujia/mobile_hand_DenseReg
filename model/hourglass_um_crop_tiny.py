@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime
 import importlib
 
-import gpu_config
+
 import tensorflow as tf
 import data.util
 from data.util import heatmap_from_xyz_op, CameraConfig, xyz2uvd_op, uvd2xyz_op
@@ -89,8 +89,7 @@ class JointDetectionModel(object):
     _gau_sigma = 3.0 
     _gau_filter_size = 10 
 
-    _base_dir = './exp/train_cache/'
-
+    _base_dir = '.\\exp\\train_cache\\'
 
     def __init__(self, dataset, detect_net, epoch, net_desc='dummy', val_dataset=None):
         '''
@@ -902,8 +901,10 @@ if __name__ == '__main__':
         import data.msra
         dataset = data.msra.MsraDataset('training', FLAGS.pid)
         val_dataset = data.msra.MsraDataset('testing', FLAGS.pid)
-
+    # FLAGS.is_train = False
+    # --dataset nyu --batch_size 32 --num_stack 2 --num_fea 128 --debug_level 2 --is_train True
+    # --dataset nyu --batch_size 3 --num_stack 2 --num_fea 128 --debug_level 2 --is_train False
     if FLAGS.is_train:
-        run_train(dataset, val_dataset)
+        run_train(dataset, val_dataset, -1)
     else:
         run_test(dataset, val_dataset, -1)

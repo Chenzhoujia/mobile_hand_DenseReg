@@ -1,6 +1,5 @@
 from __future__ import print_function, absolute_import, division
 
-import gpu_config
 import tensorflow as tf
 import network.slim as slim
 import numpy as np
@@ -41,6 +40,7 @@ def test(model, selected_step):
         
         res_path = os.path.join(model.train_dir, '%s-%s-result'%(model.val_dataset.subset, datetime.now()))
         res_path = res_path.replace(' ', '_')
+        res_path = res_path.replace(':', '_')
 
         res_txt_path = res_path+'.txt'
         if os.path.exists(res_txt_path):

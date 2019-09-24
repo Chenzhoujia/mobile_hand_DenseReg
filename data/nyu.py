@@ -4,7 +4,7 @@ from data.dataset_base import *
 from data.dataset_base import _float_feature, _bytes_feature
 import data.dataset_base
 import scipy.io as sio
-import cPickle
+import _pickle as cPickle
 from data.preprocess import crop_from_xyz_pose, crop_from_bbx, center_of_mass
 
 Annotation = namedtuple('Annotation', 'name,pose,bbx')
@@ -18,7 +18,7 @@ class NyuDataset(BaseDataset):
     '''nyu hand dataset contrains train, test sub-directories, both with annotated joint
     '''
     # directory = './exp/data/nyu/'
-    directory = '/srv/glusterfs/wanc/data/nyu/'
+    directory = 'F:\chen\pycharm\dataset'
 
     def __init__(self, subset):
         if not subset in set(['training', 'training_small', 'validation', 'testing']):
@@ -26,13 +26,13 @@ class NyuDataset(BaseDataset):
         super(NyuDataset, self).__init__(subset)
 
         if subset in set(['training', 'training_small', 'validation']):
-            self.src_dir = os.path.join(self.directory, 'dataset/train')
+            self.src_dir = os.path.join(self.directory, 'dataset\\train')
             assert os.path.exists(self.src_dir)
             self.img_dir = self.src_dir
             self.tf_dir = os.path.join(self.directory, 'tf_train')
 
         elif subset == 'testing':
-            self.src_dir = os.path.join(self.directory, 'dataset/test')
+            self.src_dir = os.path.join(self.directory, 'dataset\\test')
             assert os.path.exists(self.src_dir)
             self.img_dir = self.src_dir
             self.tf_dir = os.path.join(self.directory, 'tf_test')
@@ -107,7 +107,7 @@ class NyuDataset(BaseDataset):
         names = [['depth_{}_{:07d}.png'.format(camera_idx+1, idx+1) for idx in range(len(joints[camera_idx]))] for camera_idx in range(camera_num)]
 
         if self.subset == 'testing':
-            with open('data/nyu_bbx.pkl', 'rb') as f:
+            with open('data\\nyu_bbx.pkl', 'rb') as f:
                 bbxes = [cPickle.load(f)]
 
         self._annotations = []
