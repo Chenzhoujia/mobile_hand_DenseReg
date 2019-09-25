@@ -901,11 +901,14 @@ if __name__ == '__main__':
         import data.msra
         dataset = data.msra.MsraDataset('training', FLAGS.pid)
         val_dataset = data.msra.MsraDataset('testing', FLAGS.pid)
-    # FLAGS.is_train = False
+    #
     # --dataset nyu --batch_size 24 --num_stack 2 --num_fea 128 --debug_level 2 --is_train True
+    # --dataset nyu --batch_size 24 --num_stack 2 --num_fea 16 --debug_level 2 --is_train True
+    # FLAGS.num_fea = FLAGS.num_fea*dataset.jnt_num
+
     # --dataset nyu --batch_size 3 --num_stack 2 --num_fea 128 --debug_level 2 --is_train False
-    FLAGS.num_fea = FLAGS.num_fea*dataset.jnt_num
+    # FLAGS.is_train = False
     if FLAGS.is_train:
-        run_train(dataset, val_dataset, -1)
+        run_train(dataset, val_dataset, 6400)
     else:
-        run_test(dataset, val_dataset, -1)
+        run_test(dataset, val_dataset, 6500)

@@ -87,7 +87,8 @@ def _residual_group(ins, num_out=None, group_num = 14):
                          weight_decay=0.0005,
                          stride=1,
                          padding='SAME'):
-        half_num_in = int(num_in//2)
+        #half_num_in = int(num_in//2)
+        half_num_in = num_in
         #out_1 = ops.conv2d(ins, half_num_in, [1,1])
         #out_1 = standard_group_conv(group_num, ins, half_num_in, kernel_size=1, scope='sgc_1')
         out_1 = standard_group_conv_CAM(group_num, ins, half_num_in, kernel_size=1, scope='sgc_1')
@@ -141,18 +142,18 @@ MID_FEA_MAP = None
 def _hourglass(ins, n, group):
     ''' hourglass is created recursively, each time the module spatial resolution remains the same
     '''
-    upper1 = _residual_group(ins)
+    upper1 = _residual(ins)
 
     k = FLAGS.kernel_size
     lower1 = ops.max_pool(ins, [k,k], stride=2, padding='SAME')
-    lower1 = _residual_group(lower1)
+    lower1 = _residual(lower1)
 
     if n > 1:
         lower2 = _hourglass(lower1, n-1, group)
     else:
         lower2 = lower1
 
-    lower3 = _residual_group(lower2)
+    lower3 = _residual(lower2)
     upper2 = ops.upsampling_nearest(lower3, 2)
     print('[hourglass] n={}, shape={}'.format(n, upper1.shape))
 
@@ -177,12 +178,12 @@ def detect_net(dm_inputs, cfgs, coms, num_jnt, is_training=True, scope=''):
                 # 512*512 -> 256*256
                 conv_1 = ops.conv2d(dm_inputs, num_jnt*2, [7,7], stride=2, padding='SAME',
                                    batch_norm_params=_batch_norm_params, weight_decay=0.0005)
-                conv_2 = _residual_group(conv_1, num_jnt*4)
+                conv_2 = _residual(conv_1, num_jnt*4)
 
                 # 256*256 -> 128*128
                 pool_1 = ops.max_pool(conv_2, kernel_size=2, stride=2, padding='SAME')
-                conv_3 = _residual_group(pool_1)
-                conv_4 = _residual_group(conv_3, FLAGS.num_fea)
+                conv_3 = _residual(pool_1)
+                conv_4 = _residual(conv_3, FLAGS.num_fea)
                 hg_ins = conv_4
 
                 global MID_FEA_MAP
@@ -216,7 +217,7 @@ def detect_net(dm_inputs, cfgs, coms, num_jnt, is_training=True, scope=''):
             for i in range(FLAGS.num_stack):
                 hg_outs = _hourglass(hg_ins, n=num_resize, group = num_jnt)
 
-                ll = _residual_group(hg_outs)
+                ll = _residual(hg_outs)
                 ll = ops.conv2d(ll, FLAGS.num_fea, [1,1], stride=1, padding='SAME',
                                 activation=tf.nn.relu,
                                 batch_norm_params=_batch_norm_params,
@@ -259,6 +260,25 @@ def detect_net(dm_inputs, cfgs, coms, num_jnt, is_training=True, scope=''):
                                      activation=None,
                                      batch_norm_params=None,
                                      weight_decay=0.0005)
+                with tf.variable_scope('final_GNN_hm_out_'+str(i)):
+                    hm_out_list = []
+                    hm3_out_list = []
+                    for i in range(2):
+                        hm_out = _residual_group(hm_out)
+                        hm_out_list.append(hm_out)
+                        hm3_out = _residual_group(hm3_out)
+                        hm3_out_list.append(hm3_out)
+                    hm_out = tf.concat(hm_out_list, axis=-1)
+                    hm3_out = tf.concat(hm3_out_list, axis=-1)
+
+                    hm_out = ops.conv2d(hm_out, num_jnt, [1,1], stride=1, padding='SAME',
+                                        activation=None,
+                                        weight_decay=0.0005)
+                    hm3_out = ops.conv2d(hm3_out, num_jnt, [1,1], stride=1, padding='SAME',
+                                        activation=None,
+                                        weight_decay=0.0005)
+
+
                 end_points['hm_outs'].append(hm_out)
                 end_points['hm3_outs'].append(hm3_out)
                 end_points['um_outs'].append(um_out)

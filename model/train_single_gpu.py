@@ -117,7 +117,11 @@ def train(model, restore_step=None):
         start_step = 0
         # to resume the training
         if restore_step is not None and restore_step>0:
+            # var = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+            # saver = tf.train.Saver(var_list=var)
+            # saver.restore(sess, "resnet_50.ckpt")
             checkpoint_path = os.path.join(model.train_dir, 'model.ckpt-%d'%restore_step)
+            print('restore from '+ checkpoint_path)
             saver.restore(sess, checkpoint_path)
             start_step = restore_step
 
