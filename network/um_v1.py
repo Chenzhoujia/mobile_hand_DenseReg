@@ -260,23 +260,23 @@ def detect_net(dm_inputs, cfgs, coms, num_jnt, is_training=True, scope=''):
                                      activation=None,
                                      batch_norm_params=None,
                                      weight_decay=0.0005)
-                with tf.variable_scope('final_GNN_hm_out_'+str(i)):
-                    hm_out_list = []
-                    hm3_out_list = []
-                    for i in range(2):
-                        hm_out = _residual_group(hm_out)
-                        hm_out_list.append(hm_out)
-                        hm3_out = _residual_group(hm3_out)
-                        hm3_out_list.append(hm3_out)
-                    hm_out = tf.concat(hm_out_list, axis=-1)
-                    hm3_out = tf.concat(hm3_out_list, axis=-1)
-
-                    hm_out = ops.conv2d(hm_out, num_jnt, [1,1], stride=1, padding='SAME',
-                                        activation=None,
-                                        weight_decay=0.0005)
-                    hm3_out = ops.conv2d(hm3_out, num_jnt, [1,1], stride=1, padding='SAME',
-                                        activation=None,
-                                        weight_decay=0.0005)
+                # with tf.variable_scope('final_GNN_hm_out_'+str(i)):
+                #     hm_out_list = []
+                #     hm3_out_list = []
+                #     for i in range(2):
+                #         hm_out = _residual_group(hm_out)
+                #         hm_out_list.append(hm_out)
+                #         hm3_out = _residual_group(hm3_out)
+                #         hm3_out_list.append(hm3_out)
+                #     hm_out = tf.concat(hm_out_list, axis=-1)
+                #     hm3_out = tf.concat(hm3_out_list, axis=-1)
+                #
+                #     hm_out = ops.conv2d(hm_out, num_jnt, [1,1], stride=1, padding='SAME',
+                #                         activation=None,
+                #                         weight_decay=0.0005)
+                #     hm3_out = ops.conv2d(hm3_out, num_jnt, [1,1], stride=1, padding='SAME',
+                #                         activation=None,
+                #                         weight_decay=0.0005)
 
 
                 end_points['hm_outs'].append(hm_out)
